@@ -50,7 +50,8 @@
   td{padding:9px 10px;border-bottom:1px solid #efeada;font-size:13.5px;vertical-align:top}
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   tr.entry:hover{background:#faf8f2}
-  .del{color:#b9472f;cursor:pointer;font-weight:700;border:none;background:none;font-size:15px;line-height:1}
+  .del{color:#b9472f;cursor:pointer;font-weight:700;border:1px solid #e7c3b8;background:#fdeee9;font-size:13px;line-height:1;width:28px;height:28px;border-radius:6px}
+  .del:hover{background:#b9472f;color:#fff;border-color:#b9472f}
   .empty{padding:26px;text-align:center;color:var(--muted);font-size:13.5px}
 
   /* Invoice preview */
@@ -97,6 +98,17 @@
   .qdiv{display:flex;align-items:center;text-align:center;color:var(--muted);font-size:11.5px;margin:20px 0 14px}
   .qdiv::before,.qdiv::after{content:"";flex:1;height:1px;background:var(--line)}
   .qdiv span{padding:0 12px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+
+  /* Court appearance — pick-your-hours box */
+  .ca-box{background:linear-gradient(135deg,#fbf7ee,#f2ebda);border:1px solid var(--gold);border-radius:8px;padding:14px 16px;margin-bottom:16px}
+  .ca-l{font-size:14px;color:var(--navy);font-weight:700;margin-bottom:11px}
+  .ca-l span{color:var(--muted);font-weight:500;font-size:12.5px}
+  .ca-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .ca-row input{width:72px;text-align:center;font-weight:700;font-size:16px}
+  .ca-unit{color:var(--muted);font-size:13px}
+  .ca-price{font-family:var(--serif);font-size:21px;color:var(--gold);font-weight:700;min-width:92px}
+  .step{width:34px;height:34px;border:1px solid var(--line);background:#fff;border-radius:7px;font-size:19px;font-weight:700;color:var(--navy);cursor:pointer;line-height:1;flex:0 0 auto}
+  .step:hover{border-color:var(--gold);color:var(--gold)}
 
   @media print{
     body{background:#fff}
@@ -152,7 +164,20 @@
           </div>
         </div>
 
-        <div class="hint">⚡ Click a common eviction task to add it instantly. The price shown is auto-calculated at the selected timekeeper's rate — change the timekeeper above and prices update. Edit anything afterward in the list below.</div>
+        <div class="hint">⚡ Click a common eviction task to add it instantly. The price shown is auto-calculated at the selected timekeeper's rate — change the timekeeper above and prices update. You can remove any line afterward in the list below.</div>
+
+        <div class="ca-box">
+          <div class="ca-l">⚖️ Court Appearance <span>— most common; set the hours, then add</span></div>
+          <div class="ca-row">
+            <button class="step" onclick="caStep(-0.5)" title="less">−</button>
+            <input id="ca_hours" type="number" step="0.1" min="0" value="2.0">
+            <span class="ca-unit">hours</span>
+            <button class="step" onclick="caStep(0.5)" title="more">＋</button>
+            <span class="ca-price" id="ca_price">$850.00</span>
+            <button class="btn" onclick="addCourt()">＋ Add appearance</button>
+          </div>
+        </div>
+
         <div id="qa_groups"></div>
 
         <div class="qdiv"><span>or add a custom entry</span></div>
@@ -180,7 +205,7 @@
     </div>
 
     <div class="panel noprint" style="margin-top:22px">
-      <div class="ph"><h2>Entries on This Bill</h2><span class="sub" id="count_lbl">0 items</span></div>
+      <div class="ph"><h2>Entries on This Bill</h2><span class="sub"><b id="count_lbl">0 items</b> &middot; click ✕ to remove a line</span></div>
       <div class="pb" style="padding:0">
         <table>
           <thead><tr><th>Date</th><th>Description</th><th class="num">Hrs</th><th class="num">Rate</th><th class="num">Amount</th><th></th></tr></thead>
@@ -279,7 +304,6 @@ const PRESETS=[
     {l:'Consultation / discussion — 0.5h',d:'Conference with client regarding case strategy and status.',h:0.5},
     {l:'Consultation / discussion — 1.0h',d:'Conference with client regarding case strategy and status.',h:1.0},
     {l:'Case management conference',d:'Appeared at case management / status conference.',h:1.5},
-    {l:'Court appearance — hearing',d:'Court appearance for hearing.',h:2.0},
     {l:'Default prove-up hearing',d:'Appeared at default prove-up hearing; obtained judgment for possession.',h:2.0},
     {l:'Trial — half day',d:'Appeared for trial.',h:4.0},
     {l:'Settlement / stipulation',d:'Negotiated settlement / stipulation for judgment.',h:1.0},
@@ -321,6 +345,7 @@ function renderChips(){
       '</span><span class="cp">'+money(c.a)+'</span></button>'
     ).join('');
   }
+  caPrice();
 }
 function addPreset(gi,ii){
   const it=PRESETS[gi].items[ii];
@@ -334,6 +359,24 @@ function addPreset(gi,ii){
 }
 function addCostPreset(i){const c=COST_PRESETS[i];costs.push({desc:c.l,amt:c.a});save();render();}
 
+// ----- Court appearance: pick-your-hours -----
+function caPrice(){
+  const h=parseFloat($('ca_hours').value)||0;
+  $('ca_price').textContent=money(h*currentRate());
+}
+function caStep(d){
+  let h=(parseFloat($('ca_hours').value)||0)+d;
+  if(h<0)h=0;
+  $('ca_hours').value=h.toFixed(1);
+  caPrice();
+}
+function addCourt(){
+  const h=parseFloat($('ca_hours').value);
+  if(!(h>0)){alert('Enter the number of hours for the court appearance.');return;}
+  entries.push({date:$('e_date').value,desc:'Court appearance.',hours:h,rate:currentRate(),who:$('e_who').value.split('—')[0].trim()});
+  save();render();
+}
+
 // set today as default invoice date
 (function init(){
   const t=new Date().toISOString().slice(0,10);
@@ -345,6 +388,7 @@ function addCostPreset(i){const c=COST_PRESETS[i];costs.push({desc:c.l,amt:c.a})
     renderChips();
   });
   $('e_rate').addEventListener('input',renderChips);
+  $('ca_hours').addEventListener('input',caPrice);
   ['cl_name','cl_matter','inv_no','inv_date','prior_bal','payments','tax_rate'].forEach(id=>$(id).addEventListener('input',render));
   load(); renderChips(); render();
 })();
