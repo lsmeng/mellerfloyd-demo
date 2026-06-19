@@ -258,21 +258,29 @@
       </div>
     </div>
 
-    <div class="statusbar noprint" style="border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;background:#fff;margin-top:-1px">
+    <div class="statusbar noprint" style="border:1px solid var(--line);border-top:none;background:#fff;margin-top:-1px">
       <span class="pill draft" id="sb_status">Draft</span>
       <div class="actions" style="margin:0">
         <button class="btn ok" id="approve_btn" onclick="approve()">✓ Approve Bill</button>
+        <button class="btn" id="email_btn" onclick="emailBill()">✉ Email bill to firm</button>
         <button class="btn ghost" onclick="window.print()">🖨 Print / Save PDF</button>
         <button class="btn ghost" id="reopen_btn" onclick="reopen()" style="display:none">Reopen (edit)</button>
       </div>
     </div>
+    <div class="statusbar noprint" style="border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;background:#fff;margin-top:-1px;gap:8px">
+      <label style="font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0">Send to</label>
+      <input id="send_to" value="mellerandfloyd@la.twcbc.com" style="flex:1;min-width:200px;padding:8px 11px;border:1px solid var(--line);border-radius:5px;font-size:14px;background:#fdfcfa">
+      <span id="email_msg" style="font-size:12.5px;color:var(--ok);font-weight:600"></span>
+    </div>
     <p style="font-size:12px;color:var(--muted);margin-top:12px;line-height:1.6" class="noprint">
-      Flow: attorney enters hours &rarr; bill generates instantly &amp; correctly &rarr; partner clicks <strong>Approve</strong> &rarr; print or save as PDF. Data stays on this computer (saved in the browser). A production version could add client list, saved matters, and one-click PDF email.
+      Flow: enter hours &rarr; bill generates instantly &amp; correctly &rarr; <strong>Approve</strong> &rarr; <strong>Email bill to firm</strong> sends the invoice PDF to the address above. Data stays on this device (saved in the browser). On a phone or Safari it shares the PDF straight to your mail app; on other desktop browsers it saves the PDF and opens a pre-addressed email to attach.
     </p>
   </div>
 
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 let entries=[];   // {date,desc,hours,rate,who}
 let costs=[];     // {desc,amt}
@@ -517,6 +525,57 @@ function clearAll(){if(!confirm('Clear all entries on this bill?'))return;entrie
 
 function save(){try{localStorage.setItem('mf_bill',JSON.stringify({entries,costs,approved}));}catch(e){}}
 function load(){try{const d=JSON.parse(localStorage.getItem('mf_bill'));if(d){entries=d.entries||[];costs=d.costs||[];approved=!!d.approved;}}catch(e){}setStatus();}
+
+// ----- Email the bill as a PDF -----
+async function buildPdfBlob(){
+  const el=document.getElementById('invoice');
+  const canvas=await html2canvas(el,{scale:2,backgroundColor:'#ffffff',useCORS:true});
+  const img=canvas.toDataURL('image/jpeg',0.95);
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF('p','pt','a4');
+  const pw=pdf.internal.pageSize.getWidth();
+  const ph=pdf.internal.pageSize.getHeight();
+  const m=20, imgW=pw-m*2, imgH=canvas.height*imgW/canvas.width, pageH=ph-m*2;
+  let heightLeft=imgH, position=m;
+  pdf.addImage(img,'JPEG',m,position,imgW,imgH);
+  heightLeft-=pageH;
+  while(heightLeft>0){
+    position=m-(imgH-heightLeft);
+    pdf.addPage();
+    pdf.addImage(img,'JPEG',m,position,imgW,imgH);
+    heightLeft-=pageH;
+  }
+  return pdf.output('blob');
+}
+async function emailBill(){
+  if(!entries.length&&!costs.length){alert('Add at least one entry before emailing.');return;}
+  if(typeof html2canvas==='undefined'||!window.jspdf){alert('Emailing the PDF needs an internet connection. Use “Print / Save PDF” instead.');return;}
+  const btn=$('email_btn'), msg=$('email_msg');
+  const old=btn.textContent; btn.disabled=true; btn.textContent='Preparing PDF…'; msg.textContent='';
+  try{
+    const blob=await buildPdfBlob();
+    const fname='invoice-'+(($('inv_no').value||'draft').replace(/[^\w-]/g,''))+'.pdf';
+    const file=new File([blob],fname,{type:'application/pdf'});
+    const to=($('send_to').value||'mellerandfloyd@la.twcbc.com').trim();
+    const subject='Invoice '+($('inv_no').value||'')+' — '+($('cl_name').value||'');
+    const body='Please find attached invoice '+($('inv_no').value||'')+' for '+($('cl_matter').value||'')+'.\n\nTotal amount due: '+$('o_due').textContent+'.\n\n— Meller & Floyd';
+    // Phone / Safari: share the PDF straight to the mail app (true attachment)
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file],title:subject,text:body}); msg.textContent='Shared — pick Mail and send.'; return; }
+      catch(e){ if(e&&e.name==='AbortError'){msg.textContent='Cancelled.';return;} }
+    }
+    // Desktop fallback: download the PDF + open a pre-addressed email
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    window.location.href='mailto:'+encodeURIComponent(to)+'?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body+'\n\n(The PDF "'+fname+'" was just saved to your downloads — please attach it to this email.)');
+    msg.textContent='PDF saved + email opened — attach the PDF and send.';
+  }catch(err){
+    alert('Could not build the PDF: '+(err&&err.message?err.message:err));
+  }finally{
+    btn.disabled=false; btn.textContent=old;
+  }
+}
 </script>
 </body>
 </html>
