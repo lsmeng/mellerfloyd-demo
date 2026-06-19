@@ -86,6 +86,18 @@
   .hint{background:var(--warnbg);border-left:3px solid var(--gold);padding:9px 14px;font-size:12px;color:var(--warn);border-radius:3px;margin-bottom:16px}
   .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
 
+  /* Quick-add chips */
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .qgroup{margin-bottom:13px}
+  .qgroup .gl{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:7px}
+  .chip{display:inline-flex;flex-direction:column;align-items:flex-start;gap:1px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;font-family:var(--sans);text-align:left;transition:border-color .15s,transform .1s,box-shadow .15s}
+  .chip:hover{border-color:var(--gold);transform:translateY(-1px);box-shadow:0 8px 18px -12px rgba(28,42,58,.5)}
+  .chip .cl{font-size:13px;color:var(--navy);font-weight:600;line-height:1.25}
+  .chip .cp{font-size:11.5px;color:var(--gold);font-weight:700;font-variant-numeric:tabular-nums}
+  .qdiv{display:flex;align-items:center;text-align:center;color:var(--muted);font-size:11.5px;margin:20px 0 14px}
+  .qdiv::before,.qdiv::after{content:"";flex:1;height:1px;background:var(--line)}
+  .qdiv span{padding:0 12px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+
   @media print{
     body{background:#fff}
     .noprint{display:none!important}
@@ -128,10 +140,9 @@
     <div class="panel noprint" style="margin-top:22px">
       <div class="ph"><h2>Add Time Entry</h2><span class="sub">hours in tenths (0.1 = 6 min)</span></div>
       <div class="pb">
-        <div class="hint">The attorney just fills this in. Line totals (hours × rate) are calculated automatically — no manual math, no errors.</div>
         <div class="row r2">
           <div><label>Date</label><input id="e_date" type="date"></div>
-          <div><label>Timekeeper</label>
+          <div><label>Bill as (timekeeper)</label>
             <select id="e_who">
               <option data-rate="450">Eric Meller — $450/hr</option>
               <option data-rate="450">Harry Floyd — $450/hr</option>
@@ -140,20 +151,26 @@
             </select>
           </div>
         </div>
+
+        <div class="hint">⚡ Click a common eviction task to add it instantly. The price shown is auto-calculated at the selected timekeeper's rate — change the timekeeper above and prices update. Edit anything afterward in the list below.</div>
+        <div id="qa_groups"></div>
+
+        <div class="qdiv"><span>or add a custom entry</span></div>
         <div class="row">
-          <div><label>Description of Work</label><textarea id="e_desc" rows="2" placeholder="e.g. Prepared and filed unlawful detainer complaint; reviewed lease and 3-day notice."></textarea></div>
+          <div><label>Description of Work</label><textarea id="e_desc" rows="2" placeholder="Describe the work…"></textarea></div>
         </div>
         <div class="row r2">
           <div><label>Hours</label><input id="e_hours" type="number" step="0.1" min="0" placeholder="1.5"></div>
           <div><label>Rate ($/hr)</label><input id="e_rate" type="number" step="1" value="450"></div>
         </div>
-        <button class="btn" onclick="addEntry()">＋ Add to Bill</button>
+        <button class="btn" onclick="addEntry()">＋ Add custom entry</button>
       </div>
     </div>
 
     <div class="panel noprint" style="margin-top:22px">
       <div class="ph"><h2>Costs &amp; Expenses</h2><span class="sub">filing fees, service, etc.</span></div>
       <div class="pb">
+        <div class="chips" id="qa_costs" style="margin-bottom:14px"></div>
         <div class="row r3" style="align-items:end">
           <div><label>Description</label><input id="c_desc" placeholder="Court filing fee"></div>
           <div><label>Amount ($)</label><input id="c_amt" type="number" step="0.01" placeholder="240.00"></div>
@@ -239,17 +256,88 @@ const $=id=>document.getElementById(id);
 const money=n=>'$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtDate=s=>{if(!s)return'—';const d=new Date(s+'T00:00');return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
 
+// ===== Common eviction (unlawful detainer) task library =====
+const PRESETS=[
+  {g:'Notices & Intake',items:[
+    {l:'Review lease, ledger & notice',d:'Reviewed lease, rental ledger, and notice; assessed grounds for eviction.',h:0.5},
+    {l:'3-Day Notice to Pay or Quit',d:'Prepared 3-Day Notice to Pay Rent or Quit; verified amount demanded against ledger.',h:0.5},
+    {l:'3-Day Notice to Perform/Quit',d:'Prepared 3-Day Notice to Perform Covenants or Quit.',h:0.5},
+    {l:'30/60-Day Notice to Terminate',d:'Prepared Notice to Terminate Tenancy.',h:0.5},
+  ]},
+  {g:'Pleadings',items:[
+    {l:'Prepare & file UD Complaint',d:'Prepared and filed Unlawful Detainer complaint.',h:1.5},
+    {l:'Arrange service of process',d:'Arranged for service of process on tenant(s).',h:0.3},
+    {l:'Request for Entry of Default',d:'Prepared and filed Request for Entry of Default.',h:0.8},
+    {l:'Default judgment package',d:'Prepared default judgment package and supporting declaration.',h:1.0},
+    {l:"Review tenant's Answer",d:"Reviewed tenant's Answer and assessed the defenses raised.",h:0.7},
+    {l:'Discovery / law & motion',d:'Prepared discovery / law-and-motion as needed.',h:1.5},
+  ]},
+  {g:'Court Appearances & Discussion',items:[
+    {l:'Consultation / discussion — 0.5h',d:'Conference with client regarding case strategy and status.',h:0.5},
+    {l:'Consultation / discussion — 1.0h',d:'Conference with client regarding case strategy and status.',h:1.0},
+    {l:'Case management conference',d:'Appeared at case management / status conference.',h:1.5},
+    {l:'Court appearance — hearing',d:'Court appearance for hearing.',h:2.0},
+    {l:'Default prove-up hearing',d:'Appeared at default prove-up hearing; obtained judgment for possession.',h:2.0},
+    {l:'Trial — half day',d:'Appeared for trial.',h:4.0},
+    {l:'Settlement / stipulation',d:'Negotiated settlement / stipulation for judgment.',h:1.0},
+  ]},
+  {g:'Post-Judgment',items:[
+    {l:'Writ of Possession',d:'Prepared and filed Writ of Possession.',h:0.5},
+    {l:'Coordinate Sheriff lockout',d:'Coordinated Sheriff lockout / restoration of possession.',h:0.3},
+    {l:'Money judgment / collection',d:'Pursued recovery of unpaid rent and money judgment.',h:1.0},
+  ]},
+  {g:'Client Communication',items:[
+    {l:'Call / email — 0.2h',d:'Telephone conference / correspondence with client.',h:0.2},
+    {l:'Call / email — 0.5h',d:'Telephone conference / correspondence with client.',h:0.5},
+  ]},
+];
+const COST_PRESETS=[
+  {l:'UD filing fee',a:240.00},
+  {l:'Process server',a:95.00},
+  {l:'Sheriff lockout fee',a:145.00},
+  {l:'Writ issuance fee',a:40.00},
+];
+function currentRate(){return parseFloat($('e_rate').value)||450;}
+function renderChips(){
+  const rate=currentRate();
+  const host=$('qa_groups');
+  if(host){
+    host.innerHTML=PRESETS.map((grp,gi)=>
+      '<div class="qgroup"><div class="gl">'+grp.g+'</div><div class="chips">'+
+      grp.items.map((it,ii)=>
+        '<button class="chip" onclick="addPreset('+gi+','+ii+')"><span class="cl">'+esc(it.l)+
+        '</span><span class="cp">'+it.h.toFixed(1)+'h &middot; '+money(it.h*rate)+'</span></button>'
+      ).join('')+'</div></div>'
+    ).join('');
+  }
+  const ch=$('qa_costs');
+  if(ch){
+    ch.innerHTML=COST_PRESETS.map((c,i)=>
+      '<button class="chip" onclick="addCostPreset('+i+')"><span class="cl">'+esc(c.l)+
+      '</span><span class="cp">'+money(c.a)+'</span></button>'
+    ).join('');
+  }
+}
+function addPreset(gi,ii){
+  const it=PRESETS[gi].items[ii];
+  entries.push({date:$('e_date').value,desc:it.d,hours:it.h,rate:currentRate(),who:$('e_who').value.split('—')[0].trim()});
+  save();render();
+}
+function addCostPreset(i){const c=COST_PRESETS[i];costs.push({desc:c.l,amt:c.a});save();render();}
+
 // set today as default invoice date
 (function init(){
   const t=new Date().toISOString().slice(0,10);
   $('inv_date').value=t; $('inv_through').value=t; $('e_date').value=t;
-  // rate auto-fill from timekeeper
+  // rate auto-fill from timekeeper + refresh chip prices
   $('e_who').addEventListener('change',e=>{
     const r=e.target.selectedOptions[0].dataset.rate;
     if(r&&r!=='0')$('e_rate').value=r;
+    renderChips();
   });
+  $('e_rate').addEventListener('input',renderChips);
   ['cl_name','cl_matter','inv_no','inv_date','prior_bal','payments','tax_rate'].forEach(id=>$(id).addEventListener('input',render));
-  load(); render();
+  load(); renderChips(); render();
 })();
 
 function addEntry(){
