@@ -144,7 +144,7 @@
           <div><label>Date</label><input id="e_date" type="date"></div>
           <div><label>Bill as (timekeeper)</label>
             <select id="e_who">
-              <option data-rate="450">Eric Meller — $450/hr</option>
+              <option data-rate="420.5">Eric Meller — $420.50/hr</option>
               <option data-rate="450">Harry Floyd — $450/hr</option>
               <option data-rate="195">Paralegal — $195/hr</option>
               <option data-rate="0">Custom…</option>
@@ -161,7 +161,7 @@
         </div>
         <div class="row r2">
           <div><label>Hours</label><input id="e_hours" type="number" step="0.1" min="0" placeholder="1.5"></div>
-          <div><label>Rate ($/hr)</label><input id="e_rate" type="number" step="1" value="450"></div>
+          <div><label>Rate ($/hr)</label><input id="e_rate" type="number" step="0.01" value="420.50"></div>
         </div>
         <button class="btn" onclick="addEntry()">＋ Add custom entry</button>
       </div>
@@ -255,6 +255,8 @@ let approved=false;
 const $=id=>document.getElementById(id);
 const money=n=>'$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtDate=s=>{if(!s)return'—';const d=new Date(s+'T00:00');return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+const isFlat=e=>e.flat!=null;                       // flat-fee line item (e.g. a motion)
+const lineAmt=e=>isFlat(e)?e.flat:e.hours*e.rate;   // amount for one entry
 
 // ===== Common eviction (unlawful detainer) task library =====
 const PRESETS=[
@@ -270,7 +272,8 @@ const PRESETS=[
     {l:'Request for Entry of Default',d:'Prepared and filed Request for Entry of Default.',h:0.8},
     {l:'Default judgment package',d:'Prepared default judgment package and supporting declaration.',h:1.0},
     {l:"Review tenant's Answer",d:"Reviewed tenant's Answer and assessed the defenses raised.",h:0.7},
-    {l:'Discovery / law & motion',d:'Prepared discovery / law-and-motion as needed.',h:1.5},
+    {l:'Motion (flat fee)',d:'Prepared and filed motion.',fee:450},
+    {l:'Discovery requests/responses',d:'Prepared discovery requests and responses.',h:1.0},
   ]},
   {g:'Court Appearances & Discussion',items:[
     {l:'Consultation / discussion — 0.5h',d:'Conference with client regarding case strategy and status.',h:0.5},
@@ -297,17 +300,18 @@ const COST_PRESETS=[
   {l:'Sheriff lockout fee',a:145.00},
   {l:'Writ issuance fee',a:40.00},
 ];
-function currentRate(){return parseFloat($('e_rate').value)||450;}
+function currentRate(){return parseFloat($('e_rate').value)||420.5;}
 function renderChips(){
   const rate=currentRate();
   const host=$('qa_groups');
   if(host){
     host.innerHTML=PRESETS.map((grp,gi)=>
       '<div class="qgroup"><div class="gl">'+grp.g+'</div><div class="chips">'+
-      grp.items.map((it,ii)=>
-        '<button class="chip" onclick="addPreset('+gi+','+ii+')"><span class="cl">'+esc(it.l)+
-        '</span><span class="cp">'+it.h.toFixed(1)+'h &middot; '+money(it.h*rate)+'</span></button>'
-      ).join('')+'</div></div>'
+      grp.items.map((it,ii)=>{
+        const price=it.fee!=null ? money(it.fee)+' flat' : it.h.toFixed(1)+'h &middot; '+money(it.h*rate);
+        return '<button class="chip" onclick="addPreset('+gi+','+ii+')"><span class="cl">'+esc(it.l)+
+          '</span><span class="cp">'+price+'</span></button>';
+      }).join('')+'</div></div>'
     ).join('');
   }
   const ch=$('qa_costs');
@@ -320,7 +324,12 @@ function renderChips(){
 }
 function addPreset(gi,ii){
   const it=PRESETS[gi].items[ii];
-  entries.push({date:$('e_date').value,desc:it.d,hours:it.h,rate:currentRate(),who:$('e_who').value.split('—')[0].trim()});
+  const who=$('e_who').value.split('—')[0].trim();
+  if(it.fee!=null){
+    entries.push({date:$('e_date').value,desc:it.d,flat:it.fee,who});
+  }else{
+    entries.push({date:$('e_date').value,desc:it.d,hours:it.h,rate:currentRate(),who});
+  }
   save();render();
 }
 function addCostPreset(i){const c=COST_PRESETS[i];costs.push({desc:c.l,amt:c.a});save();render();}
@@ -364,8 +373,10 @@ function render(){
   const tb=$('entry_rows');tb.innerHTML='';
   entries.forEach((e,i)=>{
     const tr=document.createElement('tr');tr.className='entry';
+    const hc=isFlat(e)?'—':e.hours.toFixed(1);
+    const rc=isFlat(e)?'<span style="color:var(--muted)">flat</span>':money(e.rate);
     tr.innerHTML=`<td>${fmtDate(e.date)}</td><td>${esc(e.desc)}<div style="color:var(--muted);font-size:11.5px;margin-top:2px">${esc(e.who||'')}</div></td>
-      <td class="num">${e.hours.toFixed(1)}</td><td class="num">${money(e.rate)}</td><td class="num">${money(e.hours*e.rate)}</td>
+      <td class="num">${hc}</td><td class="num">${rc}</td><td class="num">${money(lineAmt(e))}</td>
       <td><button class="del" title="remove" onclick="delEntry(${i})">×</button></td>`;
     tb.appendChild(tr);
   });
@@ -380,8 +391,8 @@ function render(){
   $('count_lbl').textContent=total+(total===1?' item':' items');
 
   // invoice math
-  const fees=entries.reduce((s,e)=>s+e.hours*e.rate,0);
-  const hrs=entries.reduce((s,e)=>s+e.hours,0);
+  const fees=entries.reduce((s,e)=>s+lineAmt(e),0);
+  const hrs=entries.reduce((s,e)=>s+(isFlat(e)?0:e.hours),0);
   const costTotal=costs.reduce((s,c)=>s+c.amt,0);
   const taxRate=parseFloat($('tax_rate').value)||0;
   const tax=(fees+costTotal)*taxRate/100;
@@ -394,7 +405,9 @@ function render(){
   const orows=$('o_rows');orows.innerHTML='';
   entries.forEach(e=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${fmtDate(e.date)}</td><td>${esc(e.desc)}</td><td class="num">${e.hours.toFixed(1)}</td><td class="num">${money(e.rate)}</td><td class="num">${money(e.hours*e.rate)}</td>`;
+    const hc=isFlat(e)?'—':e.hours.toFixed(1);
+    const rc=isFlat(e)?'flat':money(e.rate);
+    tr.innerHTML=`<td>${fmtDate(e.date)}</td><td>${esc(e.desc)}</td><td class="num">${hc}</td><td class="num">${rc}</td><td class="num">${money(lineAmt(e))}</td>`;
     orows.appendChild(tr);
   });
   costs.forEach(c=>{
@@ -446,10 +459,11 @@ function setStatus(){
 
 function loadSample(){
   entries=[
-    {date:'2026-05-04',desc:'Reviewed lease, rental ledger, and 3-day notice to pay rent or quit; conference with client re: strategy.',hours:0.8,rate:450,who:'Harry Floyd'},
-    {date:'2026-05-09',desc:'Drafted and filed Unlawful Detainer complaint; arranged for service of process on tenant.',hours:1.6,rate:450,who:'Harry Floyd'},
+    {date:'2026-05-04',desc:'Reviewed lease, rental ledger, and 3-day notice to pay rent or quit; conference with client re: strategy.',hours:0.8,rate:420.5,who:'Eric Meller'},
+    {date:'2026-05-09',desc:'Drafted and filed Unlawful Detainer complaint; arranged for service of process on tenant.',hours:1.6,rate:420.5,who:'Eric Meller'},
+    {date:'2026-05-15',desc:'Prepared and filed motion.',flat:450,who:'Eric Meller'},
     {date:'2026-05-18',desc:'Prepared and filed Request for Entry of Default after tenant failed to respond.',hours:0.9,rate:195,who:'Paralegal'},
-    {date:'2026-05-27',desc:'Appeared at default prove-up hearing; obtained judgment for possession and unpaid rent.',hours:2.3,rate:450,who:'Harry Floyd'}
+    {date:'2026-05-27',desc:'Appeared at default prove-up hearing; obtained judgment for possession and unpaid rent.',hours:2.3,rate:420.5,who:'Eric Meller'}
   ];
   costs=[{desc:'Court filing fee (UD complaint)',amt:240.00},{desc:'Process server',amt:95.00},{desc:'Sheriff lockout fee',amt:145.00}];
   $('prior_bal').value='0.00';$('payments').value='1500.00';
