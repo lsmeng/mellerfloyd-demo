@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Meller &amp; Floyd — Billing Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#1c2a3a;--navy2:#26384c;--gold:#b08d49;--gold2:#c9a866;
+    --cream:#f6f3ec;--ink:#2a2f36;--muted:#5d6670;--line:#e3ddd0;
+    --ok:#2f7d54;--okbg:#e7f4ec;--warn:#7a5e22;--warnbg:#fff7e6;
+    --serif:'Cormorant Garamond',Georgia,serif;--sans:'Source Sans 3',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);color:var(--ink);background:#eceae3;font-size:15px;line-height:1.5}
+  .top{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+  .top .b{font-family:var(--serif);font-size:25px;font-weight:700}
+  .top .b span{color:var(--gold2)}
+  .top .b small{display:block;font-family:var(--sans);font-size:10px;letter-spacing:.24em;text-transform:uppercase;color:#aeb8c2;font-weight:600;margin-top:2px}
+  .top .tag{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#aeb8c2;font-weight:600;border:1px solid rgba(255,255,255,.25);padding:6px 12px;border-radius:3px}
+
+  .wrap{max-width:1240px;margin:0 auto;padding:24px 20px 60px;display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}}
+
+  .panel{background:#fff;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .ph{padding:16px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--cream)}
+  .ph h2{font-family:var(--serif);font-size:22px;color:var(--navy);font-weight:700}
+  .ph .sub{font-size:12px;color:var(--muted)}
+  .pb{padding:20px 22px}
+
+  label{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 5px}
+  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:5px;font-family:var(--sans);font-size:14px;color:var(--ink);background:#fdfcfa}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+  .row{display:grid;gap:12px;margin-bottom:14px}
+  .r2{grid-template-columns:1fr 1fr}
+  .r3{grid-template-columns:1.2fr .8fr .8fr}
+  .r-matter{grid-template-columns:1fr 1fr}
+
+  .btn{display:inline-flex;align-items:center;gap:7px;background:var(--gold);color:#fff;border:none;font-family:var(--sans);font-weight:600;font-size:14px;padding:10px 18px;border-radius:5px;cursor:pointer;transition:background .15s,transform .1s}
+  .btn:hover{background:#9a7a3c;transform:translateY(-1px)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1px solid var(--line)}
+  .btn.ghost:hover{background:var(--cream)}
+  .btn.ok{background:var(--ok)}.btn.ok:hover{background:#256542}
+  .btn.sm{padding:6px 10px;font-size:12.5px}
+
+  table{width:100%;border-collapse:collapse}
+  th{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;text-align:left;padding:8px 10px;border-bottom:2px solid var(--line)}
+  td{padding:9px 10px;border-bottom:1px solid #efeada;font-size:13.5px;vertical-align:top}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  tr.entry:hover{background:#faf8f2}
+  .del{color:#b9472f;cursor:pointer;font-weight:700;border:none;background:none;font-size:15px;line-height:1}
+  .empty{padding:26px;text-align:center;color:var(--muted);font-size:13.5px}
+
+  /* Invoice preview */
+  .invoice{background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 14px 40px -26px rgba(28,42,58,.5)}
+  .inv-head{padding:26px 30px;border-bottom:3px solid var(--gold);display:flex;justify-content:space-between;align-items:flex-start}
+  .inv-head .firm{font-family:var(--serif);font-size:26px;font-weight:700;color:var(--navy)}
+  .inv-head .firm span{color:var(--gold)}
+  .inv-head .firm small{display:block;font-family:var(--sans);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-top:3px}
+  .inv-head .addr{font-size:11.5px;color:var(--muted);text-align:right;line-height:1.6}
+  .inv-meta{display:flex;justify-content:space-between;padding:20px 30px;gap:24px;flex-wrap:wrap;background:var(--cream);border-bottom:1px solid var(--line)}
+  .inv-meta .k{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  .inv-meta .v{font-size:14px;color:var(--navy);font-weight:600;margin-top:2px}
+  .inv-title{padding:18px 30px 6px;font-family:var(--serif);font-size:19px;color:var(--navy);font-weight:700}
+  .inv-body{padding:4px 30px 8px}
+  .inv-body table td{font-size:12.5px}
+  .totals{padding:8px 30px 24px;display:flex;justify-content:flex-end}
+  .totals table{width:auto;min-width:300px}
+  .totals td{border:none;padding:5px 0;font-size:14px}
+  .totals td.lab{text-align:right;padding-right:26px;color:var(--muted)}
+  .totals td.val{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;min-width:120px}
+  .totals tr.due td{font-family:var(--serif);font-size:21px;color:var(--navy);font-weight:700;border-top:2px solid var(--navy);padding-top:10px}
+  .inv-foot{padding:16px 30px 26px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);line-height:1.6}
+
+  .stamp-wrap{position:relative}
+  .stamp{position:absolute;top:80px;right:40px;transform:rotate(-12deg);border:3px solid var(--ok);color:var(--ok);font-weight:800;letter-spacing:.12em;font-size:22px;padding:8px 20px;border-radius:6px;opacity:.92;text-transform:uppercase;background:rgba(231,244,236,.5)}
+  .stamp .small{display:block;font-size:10px;letter-spacing:.06em;text-align:center;margin-top:2px;font-weight:600}
+
+  .statusbar{display:flex;align-items:center;gap:10px;padding:12px 22px;border-top:1px solid var(--line);background:var(--cream);flex-wrap:wrap}
+  .pill{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:5px 11px;border-radius:20px}
+  .pill.draft{background:var(--warnbg);color:var(--warn)}
+  .pill.approved{background:var(--okbg);color:var(--ok)}
+
+  .hint{background:var(--warnbg);border-left:3px solid var(--gold);padding:9px 14px;font-size:12px;color:var(--warn);border-radius:3px;margin-bottom:16px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+
+  @media print{
+    body{background:#fff}
+    .noprint{display:none!important}
+    .wrap{display:block;padding:0;max-width:none}
+    .invoice{border:none;box-shadow:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="top noprint">
+  <div class="b">Meller &amp; <span>Floyd</span><small>Billing System &middot; Demo</small></div>
+  <div class="tag">⚙ Auto-Bill Prototype — no AI, just math</div>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ LEFT: ENTRY ============ -->
+  <div>
+    <div class="panel noprint">
+      <div class="ph"><h2>Matter &amp; Client</h2><span class="sub">fill once per bill</span></div>
+      <div class="pb">
+        <div class="row r-matter">
+          <div><label>Client</label><input id="cl_name" value="ABC Property Holdings, LLC"></div>
+          <div><label>Matter</label><input id="cl_matter" value="Unlawful Detainer — 123 Ocean Ave, Unit 4"></div>
+        </div>
+        <div class="row r3">
+          <div><label>Invoice #</label><input id="inv_no" value="2026-0418"></div>
+          <div><label>Invoice Date</label><input id="inv_date" type="date"></div>
+          <div><label>Period Through</label><input id="inv_through" type="date"></div>
+        </div>
+        <div class="row r3">
+          <div><label>Prior Balance ($)</label><input id="prior_bal" type="number" step="0.01" value="0.00"></div>
+          <div><label>Payments Received ($)</label><input id="payments" type="number" step="0.01" value="0.00"></div>
+          <div><label>Tax Rate (%)</label><input id="tax_rate" type="number" step="0.01" value="0"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel noprint" style="margin-top:22px">
+      <div class="ph"><h2>Add Time Entry</h2><span class="sub">hours in tenths (0.1 = 6 min)</span></div>
+      <div class="pb">
+        <div class="hint">The attorney just fills this in. Line totals (hours × rate) are calculated automatically — no manual math, no errors.</div>
+        <div class="row r2">
+          <div><label>Date</label><input id="e_date" type="date"></div>
+          <div><label>Timekeeper</label>
+            <select id="e_who">
+              <option data-rate="450">Harry Floyd — $450/hr</option>
+              <option data-rate="450">Eric Meller — $450/hr</option>
+              <option data-rate="195">Paralegal — $195/hr</option>
+              <option data-rate="0">Custom…</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div><label>Description of Work</label><textarea id="e_desc" rows="2" placeholder="e.g. Prepared and filed unlawful detainer complaint; reviewed lease and 3-day notice."></textarea></div>
+        </div>
+        <div class="row r2">
+          <div><label>Hours</label><input id="e_hours" type="number" step="0.1" min="0" placeholder="1.5"></div>
+          <div><label>Rate ($/hr)</label><input id="e_rate" type="number" step="1" value="450"></div>
+        </div>
+        <button class="btn" onclick="addEntry()">＋ Add to Bill</button>
+      </div>
+    </div>
+
+    <div class="panel noprint" style="margin-top:22px">
+      <div class="ph"><h2>Costs &amp; Expenses</h2><span class="sub">filing fees, service, etc.</span></div>
+      <div class="pb">
+        <div class="row r3" style="align-items:end">
+          <div><label>Description</label><input id="c_desc" placeholder="Court filing fee"></div>
+          <div><label>Amount ($)</label><input id="c_amt" type="number" step="0.01" placeholder="240.00"></div>
+          <div><button class="btn ghost" onclick="addCost()">＋ Add Cost</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel noprint" style="margin-top:22px">
+      <div class="ph"><h2>Entries on This Bill</h2><span class="sub" id="count_lbl">0 items</span></div>
+      <div class="pb" style="padding:0">
+        <table>
+          <thead><tr><th>Date</th><th>Description</th><th class="num">Hrs</th><th class="num">Rate</th><th class="num">Amount</th><th></th></tr></thead>
+          <tbody id="entry_rows"></tbody>
+        </table>
+        <div id="entry_empty" class="empty">No entries yet — add time above, or load the sample.</div>
+      </div>
+      <div class="statusbar">
+        <button class="btn ghost sm" onclick="loadSample()">Load sample data</button>
+        <button class="btn ghost sm" onclick="clearAll()">Clear all</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ RIGHT: INVOICE ============ -->
+  <div>
+    <div class="invoice stamp-wrap" id="invoice">
+      <div id="approved_stamp" style="display:none" class="stamp">Approved<span class="small" id="stamp_by">by H. Floyd</span></div>
+      <div class="inv-head">
+        <div class="firm">Meller &amp; <span>Floyd</span><small>Attorneys at Law</small></div>
+        <div class="addr">2001 Wilshire Blvd, Suite&nbsp;[__]<br>Santa Monica, CA 90403<br>(310) 829-0945</div>
+      </div>
+      <div class="inv-meta">
+        <div><div class="k">Bill To</div><div class="v" id="o_client">—</div></div>
+        <div><div class="k">Invoice #</div><div class="v" id="o_inv">—</div></div>
+        <div><div class="k">Invoice Date</div><div class="v" id="o_date">—</div></div>
+        <div><div class="k">Status</div><div class="v"><span class="pill draft" id="o_status">Draft</span></div></div>
+      </div>
+      <div class="inv-title" id="o_matter">Statement for Professional Services Rendered</div>
+      <div class="inv-body" style="padding-top:0">
+        <table>
+          <thead><tr><th>Date</th><th>Services</th><th class="num">Hours</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+          <tbody id="o_rows"></tbody>
+        </table>
+      </div>
+      <div class="totals">
+        <table>
+          <tr><td class="lab">Professional Fees</td><td class="val" id="o_fees">$0.00</td></tr>
+          <tr id="o_costs_row" style="display:none"><td class="lab">Costs &amp; Expenses</td><td class="val" id="o_costs">$0.00</td></tr>
+          <tr id="o_tax_row" style="display:none"><td class="lab">Tax</td><td class="val" id="o_tax">$0.00</td></tr>
+          <tr><td class="lab">Current Charges</td><td class="val" id="o_current">$0.00</td></tr>
+          <tr id="o_prior_row" style="display:none"><td class="lab">Prior Balance</td><td class="val" id="o_prior">$0.00</td></tr>
+          <tr id="o_pay_row" style="display:none"><td class="lab">Less Payments</td><td class="val" id="o_pay">$0.00</td></tr>
+          <tr class="due"><td class="lab">Total Amount Due</td><td class="val" id="o_due">$0.00</td></tr>
+        </table>
+      </div>
+      <div class="inv-foot">
+        Total hours billed: <strong id="o_hours">0.0</strong>. Payment due within 30 days of invoice date. Please reference the invoice number with your payment.<br>
+        <em>Demo statement — figures auto-calculated from the entries on the left.</em>
+      </div>
+    </div>
+
+    <div class="statusbar noprint" style="border:1px solid var(--line);border-top:none;border-radius:0 0 8px 8px;background:#fff;margin-top:-1px">
+      <span class="pill draft" id="sb_status">Draft</span>
+      <div class="actions" style="margin:0">
+        <button class="btn ok" id="approve_btn" onclick="approve()">✓ Approve Bill</button>
+        <button class="btn ghost" onclick="window.print()">🖨 Print / Save PDF</button>
+        <button class="btn ghost" id="reopen_btn" onclick="reopen()" style="display:none">Reopen (edit)</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:12px;line-height:1.6" class="noprint">
+      Flow: attorney enters hours &rarr; bill generates instantly &amp; correctly &rarr; partner clicks <strong>Approve</strong> &rarr; print or save as PDF. Data stays on this computer (saved in the browser). A production version could add client list, saved matters, and one-click PDF email.
+    </p>
+  </div>
+
+</div>
+
+<script>
+let entries=[];   // {date,desc,hours,rate,who}
+let costs=[];     // {desc,amt}
+let approved=false;
+const $=id=>document.getElementById(id);
+const money=n=>'$'+(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDate=s=>{if(!s)return'—';const d=new Date(s+'T00:00');return isNaN(d)?s:d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+
+// set today as default invoice date
+(function init(){
+  const t=new Date().toISOString().slice(0,10);
+  $('inv_date').value=t; $('inv_through').value=t; $('e_date').value=t;
+  // rate auto-fill from timekeeper
+  $('e_who').addEventListener('change',e=>{
+    const r=e.target.selectedOptions[0].dataset.rate;
+    if(r&&r!=='0')$('e_rate').value=r;
+  });
+  ['cl_name','cl_matter','inv_no','inv_date','prior_bal','payments','tax_rate'].forEach(id=>$(id).addEventListener('input',render));
+  load(); render();
+})();
+
+function addEntry(){
+  const hours=parseFloat($('e_hours').value);
+  const rate=parseFloat($('e_rate').value);
+  const desc=$('e_desc').value.trim();
+  if(!desc){alert('Please enter a description of the work.');return;}
+  if(!(hours>0)){alert('Please enter hours (e.g. 1.5).');return;}
+  if(!(rate>0)){alert('Please enter a rate.');return;}
+  entries.push({date:$('e_date').value,desc,hours,rate,who:$('e_who').value.split('—')[0].trim()});
+  $('e_desc').value='';$('e_hours').value='';
+  save();render();
+}
+function addCost(){
+  const desc=$('c_desc').value.trim();const amt=parseFloat($('c_amt').value);
+  if(!desc||!(amt>0)){alert('Enter a cost description and amount.');return;}
+  costs.push({desc,amt});$('c_desc').value='';$('c_amt').value='';save();render();
+}
+function delEntry(i){entries.splice(i,1);save();render();}
+function delCost(i){costs.splice(i,1);save();render();}
+
+function render(){
+  // editable table
+  const tb=$('entry_rows');tb.innerHTML='';
+  entries.forEach((e,i)=>{
+    const tr=document.createElement('tr');tr.className='entry';
+    tr.innerHTML=`<td>${fmtDate(e.date)}</td><td>${esc(e.desc)}<div style="color:var(--muted);font-size:11.5px;margin-top:2px">${esc(e.who||'')}</div></td>
+      <td class="num">${e.hours.toFixed(1)}</td><td class="num">${money(e.rate)}</td><td class="num">${money(e.hours*e.rate)}</td>
+      <td><button class="del" title="remove" onclick="delEntry(${i})">×</button></td>`;
+    tb.appendChild(tr);
+  });
+  costs.forEach((c,i)=>{
+    const tr=document.createElement('tr');tr.className='entry';
+    tr.innerHTML=`<td>cost</td><td>${esc(c.desc)}</td><td class="num">—</td><td class="num">—</td><td class="num">${money(c.amt)}</td>
+      <td><button class="del" onclick="delCost(${i})">×</button></td>`;
+    tb.appendChild(tr);
+  });
+  const total=entries.length+costs.length;
+  $('entry_empty').style.display=total?'none':'block';
+  $('count_lbl').textContent=total+(total===1?' item':' items');
+
+  // invoice math
+  const fees=entries.reduce((s,e)=>s+e.hours*e.rate,0);
+  const hrs=entries.reduce((s,e)=>s+e.hours,0);
+  const costTotal=costs.reduce((s,c)=>s+c.amt,0);
+  const taxRate=parseFloat($('tax_rate').value)||0;
+  const tax=(fees+costTotal)*taxRate/100;
+  const current=fees+costTotal+tax;
+  const prior=parseFloat($('prior_bal').value)||0;
+  const pay=parseFloat($('payments').value)||0;
+  const due=current+prior-pay;
+
+  // invoice rows
+  const orows=$('o_rows');orows.innerHTML='';
+  entries.forEach(e=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${fmtDate(e.date)}</td><td>${esc(e.desc)}</td><td class="num">${e.hours.toFixed(1)}</td><td class="num">${money(e.rate)}</td><td class="num">${money(e.hours*e.rate)}</td>`;
+    orows.appendChild(tr);
+  });
+  costs.forEach(c=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>—</td><td>${esc(c.desc)} <span style="color:var(--muted)">(cost)</span></td><td class="num">—</td><td class="num">—</td><td class="num">${money(c.amt)}</td>`;
+    orows.appendChild(tr);
+  });
+  if(!total)orows.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No charges yet.</td></tr>';
+
+  $('o_client').textContent=$('cl_name').value||'—';
+  $('o_matter').textContent=$('cl_matter').value?('RE: '+$('cl_matter').value):'Statement for Professional Services Rendered';
+  $('o_inv').textContent=$('inv_no').value||'—';
+  $('o_date').textContent=fmtDate($('inv_date').value);
+  $('o_fees').textContent=money(fees);
+  $('o_hours').textContent=hrs.toFixed(1);
+  $('o_current').textContent=money(current);
+  $('o_due').textContent=money(due);
+  toggle('o_costs_row',costTotal>0,'o_costs',costTotal);
+  toggle('o_tax_row',tax>0,'o_tax',tax);
+  toggle('o_prior_row',prior!==0,'o_prior',prior);
+  toggle('o_pay_row',pay!==0,'o_pay',-pay);
+}
+function toggle(rowId,show,valId,val){
+  $(rowId).style.display=show?'table-row':'none';
+  if(show)$(valId).textContent=money(val);
+}
+function esc(s){return(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+function approve(){
+  if(!entries.length&&!costs.length){alert('Add at least one entry before approving.');return;}
+  approved=true;setStatus();save();
+}
+function reopen(){approved=false;setStatus();save();}
+function setStatus(){
+  const st=$('o_status'),sb=$('sb_status');
+  if(approved){
+    st.className='pill approved';st.textContent='Approved';
+    sb.className='pill approved';sb.textContent='Approved';
+    $('approved_stamp').style.display='block';
+    $('stamp_by').textContent='by '+($('e_who').value.includes('Meller')?'E. Meller':'H. Floyd');
+    $('approve_btn').style.display='none';$('reopen_btn').style.display='inline-flex';
+  }else{
+    st.className='pill draft';st.textContent='Draft';
+    sb.className='pill draft';sb.textContent='Draft';
+    $('approved_stamp').style.display='none';
+    $('approve_btn').style.display='inline-flex';$('reopen_btn').style.display='none';
+  }
+}
+
+function loadSample(){
+  entries=[
+    {date:'2026-05-04',desc:'Reviewed lease, rental ledger, and 3-day notice to pay rent or quit; conference with client re: strategy.',hours:0.8,rate:450,who:'Harry Floyd'},
+    {date:'2026-05-09',desc:'Drafted and filed Unlawful Detainer complaint; arranged for service of process on tenant.',hours:1.6,rate:450,who:'Harry Floyd'},
+    {date:'2026-05-18',desc:'Prepared and filed Request for Entry of Default after tenant failed to respond.',hours:0.9,rate:195,who:'Paralegal'},
+    {date:'2026-05-27',desc:'Appeared at default prove-up hearing; obtained judgment for possession and unpaid rent.',hours:2.3,rate:450,who:'Harry Floyd'}
+  ];
+  costs=[{desc:'Court filing fee (UD complaint)',amt:240.00},{desc:'Process server',amt:95.00},{desc:'Sheriff lockout fee',amt:145.00}];
+  $('prior_bal').value='0.00';$('payments').value='1500.00';
+  approved=false;save();render();setStatus();
+}
+function clearAll(){if(!confirm('Clear all entries on this bill?'))return;entries=[];costs=[];approved=false;save();render();setStatus();}
+
+function save(){try{localStorage.setItem('mf_bill',JSON.stringify({entries,costs,approved}));}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem('mf_bill'));if(d){entries=d.entries||[];costs=d.costs||[];approved=!!d.approved;}}catch(e){}setStatus();}
+</script>
+</body>
+</html>
